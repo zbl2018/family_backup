@@ -1,0 +1,29 @@
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <title>live cam 接收页面</title>
+</head>
+<body>
+    <img src="" height=300 width=300 id="imgDiv"/>
+    <script type="text/javascript" charset="utf-8"> 
+    var ws = new WebSocket("ws://193.112.128.66:20000");
+    var img = document.getElementById("imgDiv");
+    ws.onmessage = function(evt) {
+    if(typeof(evt.data)=="string"){
+        //textHandler(JSON.parse(evt.data));  
+    }else{  
+    //alert(evt.data)
+  var reader = new FileReader();  
+        reader.onload = function(evt){  
+            if(evt.target.readyState == FileReader.DONE){  
+                var url = evt.target.result;  
+                //alert(url);  
+                img.src = url;  
+            }  
+        }  
+        reader.readAsDataURL(evt.data);  
+    }  
+};      
+</script>
+</body>
+</html>
