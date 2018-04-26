@@ -27,15 +27,21 @@ void ws_server::OnOpen(WebsocketServer *server, websocketpp::connection_hdl hdl)
 
 void ws_server::OnClose(WebsocketServer *server, websocketpp::connection_hdl hdl)
 {
+    char sql[100];
     cout << "have client disconnected" << endl;
+    int ws_id = GetWsId(hdl);
+    sprintf(sql,"update user_info set ws_status = '0' where ws_txt = '%d' or ws_photo = '%d'",ws_id,ws_id);
+    My_db->exeSQL(sql,UPDATE,My_db->result);
     int off_id=GetWsId(hdl);//保存离线id
     OffLine_id.push_back(off_id);
     connect_id.erase(off_id);
+    //更新数据库
+    
 }
 
 void ws_server::OnMessage(WebsocketServer *server, websocketpp::connection_hdl hdl, message_ptr msg)
 {
-    byte head[6];
+    byte head[HEAD_ALL_LEN];
     char send_info[1024]={0};
     string strMsg = msg->get_payload();
     MyJson *my_json = new MyJson();
@@ -161,16 +167,17 @@ int ws_server::reconnect_tcp_server(int &clientSocket_fd, struct sockaddr_in ser
 void * ws_server::recvInfo_from_TcpServer(void* args){
         WebsocketServer *server = (WebsocketServer*)args;
 		char data_buf[MAX_BUF_LEN];
-		unsigned char head_buf[HEAD_LEN];
+		unsigned char head_buf[HEAD_ALL_LEN];
 		int ret_len;
         int data_len;
         int ws_id;
+        int recv_type;
         websocketpp::connection_hdl ws_hdl;
 	while(1){
         // memset(data_buf,'\0',MAX_BUF_LEN);
         // memset(head_buf,0,HEAD_LEN);
        
-		ret_len = recv(clientSocket_fd,head_buf,HEAD_LEN,MSG_WAITALL);
+		ret_len = recv(clientSocket_fd,head_buf,HEAD_ALL_LEN,MSG_WAITALL);
         //cout<<"hex:"<<hex<<head_buf<<endl;
         if(ret_len==0||ret_len<0){
              printf("remote socket closed 1\n");
@@ -181,8 +188,9 @@ void * ws_server::recvInfo_from_TcpServer(void* args){
             // for(int i=0;i<6;i++){
             //         //cout<<hex<<(short)head_buf[i]<<endl;
             //     }
-            data_len = bytesToInt(head_buf+2,4);//后四个字节为报文数据部分长度
-            ws_id=bytesToInt(head_buf,2);
+            recv_type = bytesToInt(head_buf,HEAD_TYPE_LEN);
+            ws_id=bytesToInt(head_buf+HEAD_TYPE_LEN,HEAD_CON_LEN);
+            data_len = bytesToInt(head_buf+HEAD_TYPE_LEN+HEAD_CON_LEN,HEAD_DATA_LEN);//后四个字节为报文数据部分长度 
         }
         cout<<"length:"<<data_len<<endl;
         cout<<"ws_id:"<<ws_id<<endl;
@@ -205,7 +213,9 @@ void * ws_server::recvInfo_from_TcpServer(void* args){
                 printf("the ws_id:%d isn't in db\n",ws_id);
                 continue;
             }
-            server->send(ws_hdl, data_buf,data_len,websocketpp::frame::opcode::BINARY);
+            if(recv_type==99)
+                server->send(ws_hdl, data_buf,data_len,websocketpp::frame::opcode::BINARY);
+            else server->send(ws_hdl, data_buf,data_len,websocketpp::frame::opcode::TEXT);
         }
         else{
             printf("remote socket closed 2\n"); //客户端断开链接
@@ -215,9 +225,6 @@ void * ws_server::recvInfo_from_TcpServer(void* args){
 	}
 	
 }
-
-
-
 byte* ws_server::intToBytes(int value,int byte_len){
     if(byte_len>4||byte_len<1)
     {
@@ -314,13 +321,13 @@ int ws_server::GetWsId(websocketpp::connection_hdl hdl){
     }
 }
 bool ws_server::ImmediateTranspond(int tcp_id,string msg){
-    byte head_buf[6];
-    memcpy(head_buf,intToBytes(tcp_id,2),2);
-    memcpy(head_buf+2,intToBytes(msg.length(),4),4);
+    byte head_buf[HEAD_ALL_LEN];
+    memcpy(head_buf+HEAD_TYPE_LEN,intToBytes(tcp_id,2),2);
+    memcpy(head_buf+HEAD_TYPE_LEN+HEAD_CON_LEN,intToBytes(msg.length(),HEAD_DATA_LEN),HEAD_DATA_LEN);
     int send_status =-1;
     // cout<<"id:"<<bytesToInt(head_buf,2)<<endl;    
     // cout<<"headlen:"<<bytesToInt(head_buf+2,4)<<endl;
-    send_status=send(clientSocket_fd, head_buf,6, MSG_NOSIGNAL);
+    send_status=send(clientSocket_fd, head_buf,HEAD_ALL_LEN, MSG_NOSIGNAL);
     if(send_status>0){
         printf("send head_buf to tcp server successfully!\n");
     }

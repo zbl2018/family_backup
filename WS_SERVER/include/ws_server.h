@@ -14,8 +14,12 @@ using namespace std;
 #define byte unsigned char
 //WS同时存在最大的最大连接数
 #define MAX_WSCON 65535
-#define HEAD_LEN 6
+//#define HEAD_LEN 6
 #define MAX_BUF_LEN 999999
+#define HEAD_ALL_LEN  7 //每个报文头部长度
+#define HEAD_TYPE_LEN  1 //每个报文头部长度
+#define HEAD_DATA_LEN  4 //每个报文头部长度
+#define HEAD_CON_LEN  2 //每个报文头部长度
 class ws_server{
     public:
             //websocket

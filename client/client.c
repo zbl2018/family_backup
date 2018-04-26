@@ -148,13 +148,13 @@ int bytesToInt(byte* des, int byte_len){
 // }
 void * recv_function(void* args){
 		char recvbuf[10000];
-		unsigned char head[6];
+		unsigned char head[7];
 		int iDataNum;
 		string cipherHex;
 	while(1){
 		printf("111111\n");
-		iDataNum = recv(clientSocket,head,6,MSG_WAITALL);
-		int data_len = bytesToInt(head+2,4);
+		iDataNum = recv(clientSocket,head,7,MSG_WAITALL);
+		int data_len = bytesToInt(head+3,4);
 		iDataNum = recv(clientSocket,recvbuf,data_len ,MSG_WAITALL);
 		printf("length:%d\n",data_len);
 		printf("iDataNum:%d\n",iDataNum);
@@ -183,7 +183,7 @@ int main()
     pthread_t a_thread,b_thread,c_thread,d_thread;
     void *thread_result;
     res=pthread_rwlock_init(&rwlock,NULL);//初始化读写锁
-	byte *head=new byte[6];
+	byte *head=new byte[7];
 
 	// pthread_rwlock_rdlock(&rwlock);//获取读取锁	
 	// pthread_rwlock_wrlock(&rwlock);//获取写入锁
@@ -294,16 +294,17 @@ int main()
 		// strcpy(sendbuf,my_aes.encrypt(sendbuf).c_str());
 		// printf("\n");
 		//cout<<"length:"<<strlen(sendbuf)+1<<endl;
-		memcpy(head+2,intToBytes(strlen(sendbuf)+1,4),4);
-		cout<<"len:"<<bytesToInt(head+2,4)<<endl;
+		memcpy(head,intToBytes(100,1),1);
+		memcpy(head+3,intToBytes(strlen(sendbuf)+1,4),4);
+		cout<<"len:"<<bytesToInt(head+3,4)<<endl;
 		//cout<<"head:"<< hex <<head<<endl;
-		head[0]=NULL;
-		head[1]=NULL;
+		// head[0]=NULL;
+		// head[1]=NULL;
 		//cout<<"headlengrh:"<<bytesToInt(head,2);
 		char info[1000];
-		memcpy(info,head,6);
-		memcpy(info+6,sendbuf,strlen(sendbuf)+1);
-		int temp=send(clientSocket, info, strlen(sendbuf)+7, MSG_NOSIGNAL);
+		memcpy(info,head,7);
+		memcpy(info+7,sendbuf,strlen(sendbuf)+1);
+		int temp=send(clientSocket, info, strlen(sendbuf)+8, MSG_NOSIGNAL);
 		//cout<<sendbuf<<endl;
 		if(temp<0)
 		{

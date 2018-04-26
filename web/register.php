@@ -33,7 +33,7 @@ $upass=md5($_POST['pass']);
         <script>alert('successfully registered');</script>
 		<?php
 		$_SESSION["user"]=$user_id;
-		header("Location: home.php");
+		header("Location: client.php");
  }
  else
  {

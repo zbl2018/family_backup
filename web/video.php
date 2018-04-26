@@ -23,24 +23,29 @@ $res = $con->query($sql);
 
 <!DOCTYPE html>
 <html lang="utf-8">
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" charset="utf-8" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <head>
 </head>
 <title>视频显示</title>
 <body style="text-align:center;">
 <p>
-	<video width="300" height="300" controls="controls" preload="metadata"> 
+	<video width="300" height="300" controls="controls"  autoplay="autoplay" loop="900"> 
 	<source src=<?php echo($play_path)?> type="video/mp4"> 
 		您的浏览器不支持此种视频格式。 
 </video>
-	</p>	
-以下是你家里最近的视频缓存，点击以下某个时间查看详细的视频,或者
-<a href="logout.php"><button>退出当前的用户登录？</button></input></a>:
+	</p>
+点击 	
+<a href="logout.php">退出登录？</a>
+或者点击 
+<a href="client.php">返回控制台</a>
 <p>
+<p align="left">
+以下是你家里最近的视频缓存，点击以下某个具体时间查看监控录像：
+</p>
  <?php   
 while($row=$res->fetch_array())
  {
-    echo "<a href= video.php?play_id=".$row["video_name"].">".$row["video_name"]."</a> ";
+    echo "<p><a href= video.php?play_id=".$row["video_name"].">".$row["video_name"]."</a></p>";
  }
 
 $con->close();
