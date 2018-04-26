@@ -89,9 +89,11 @@ void ev_tcpServer::accept_socket_cb(struct ev_loop *loop,ev_io *w, int revents)
     memset(rw_watcher,0x00,sizeof(ev_io));
     //自定义观察器用户数据结构
     rw_watcher->data=new watcher_data;
-    ((watcher_data*)(rw_watcher->data))->client_port = sin.sin_port;
-    // std::cout<<"aaa:"<<sin.sin_addr.s_addr<<endl;
-    // cout<<"1111:"<<inet_addr("127.0.0.1")<<endl;
+    init_watcher_data((watcher_data*)(rw_watcher->data),fd,sin.sin_port);
+    // w_data->client_port = sin.sin_port;
+    // ((watcher_data*)(rw_watcher->data))->image_id = 1;
+    // ((watcher_data*)(rw_watcher->data))->user_id = 
+    // ((watcher_data*)(rw_watcher->data))->fp.open()
     //==========判断链接是来自底层还是来自net_node、本地web=========================
     if(sin.sin_port == 20108){
         ev_io_init(rw_watcher,recv_socket_cb_hardware,fd,EV_READ);
@@ -226,17 +228,40 @@ void ev_tcpServer::recv_socket_cb_net(struct ev_loop *loop,ev_io *w, int revents
     int ret_len = 0;
     int data_len=256;
     int recv_type = 0;
-    cout<<"tcp"<<endl;
-    // char sql[200];
+    char index[200];
+    FILE *make_video_fp;
+    char make_video_ord[200];
+    //cout<<"tcp"<<endl;
+    char sql[200];
     // int port = ((watcher_data*)(w->data))->client_port;
     bool res_flag=false;//回复客户端标志位 false：不用回复
     do{
                 //1.获取报文首部
                 ret_len = recv(w->fd,head_buf,HEAD_LEN,MSG_WAITALL);
-                //cout<<"hex:"<<hex<<head_buf<<endl;
+                //断开连接
                 if(ret_len==0||ret_len<0){
+                    sprintf(make_video_ord,"ffmpeg -r 10 -i %s/%s/image%%d.jpg -vcodec h264 %s/%s.mp4",
+                    ((watcher_data*)(w->data))->photo_dir.c_str(),((watcher_data*)(w->data))->passage_start_time.c_str(),((watcher_data*)(w->data))->video_dir.c_str(),((watcher_data*)(w->data))->passage_start_time.c_str());
+                    cout<<make_video_ord<<endl;
+                    make_video_fp=popen(make_video_ord,"r");
                     printf("remote socket closed 1\n");
-                    break;
+                    pclose(make_video_fp);
+
+                    //更新用户数据库
+                    sprintf(sql,"insert into video_info(user_id,video_name) value('%d','%s.mp4')",
+                    ((watcher_data*)(w->data))->user_id,((watcher_data*)(w->data))->passage_start_time.c_str());
+                     cout<<"sql:"<<sql<<endl;
+                    if(My_db->exeSQL(sql,INSERT,My_db->result))
+                    {
+                    // printf("insert into db successfully! \n");
+                    }
+                    else {
+                        printf("fail to insert into db \n");
+                    }
+                    mysql_free_result(My_db->result);
+                    My_db->result=NULL;
+                    My_db->row=NULL;
+                    break; 
                 }
                 else data_len = bytesToInt(head_buf+2,4);//后四个字节为报文数据部分长度
                 cout<<"length:"<<data_len<<endl;
@@ -253,12 +278,24 @@ void ev_tcpServer::recv_socket_cb_net(struct ev_loop *loop,ev_io *w, int revents
                 //3.获取数据部分
                 ret_len = recv(w->fd,data_buf,data_len, MSG_WAITALL);
                 if(ret_len > 0)
-                {
-                    //net_node那边并没有加终结符
-                    //data_buf[data_len]='\0';
+                {                    
                     if(recv_type==99){
-                        //server_log.open("1.jpg");
-                        server_log.write(data_buf,data_len);
+                        //存储用户图片
+                        //index=;
+                        //index.append((watcher_data*)(w->data))->passage_start_time)
+                        sprintf(index,"%s/%s/image%d.jpg",((watcher_data*)(w->data))->photo_dir.c_str(),((watcher_data*)(w->data))->passage_start_time.c_str(),((watcher_data*)(w->data))->image_id);
+                        cout<<index<<endl;
+                        ((watcher_data*)(w->data))->fp.open(index,ios::out|ios::binary);
+                        if(!((watcher_data*)(w->data))->fp) //直接这样判断
+                        {
+                            cout<<"fail to open the file !\n"<<endl;
+                        }
+                        else{
+                             ((watcher_data*)(w->data))->fp.write(data_buf,data_len);
+                             ((watcher_data*)(w->data))->fp.close();
+                             ((watcher_data*)(w->data))->image_id++;
+                        }
+                        //server_log.open("1.jpg");              
                         memcpy(head_buf,intToBytes(1,2),2);
                         memcpy(head_buf+2,intToBytes(data_len,4),4);
                         memcpy(info,head_buf,HEAD_LEN);
@@ -519,7 +556,7 @@ int ev_tcpServer::bytesToInt(byte* des, int byte_len){
 string ev_tcpServer::GetTime(){
         time_t t = time( 0 );   
         char tmpBuf[255];   
-        strftime(tmpBuf, 255, "%Y-%m-%d %H:%M:%S", localtime(&t)); //format date and time.
+        strftime(tmpBuf, 255, "%Y-%m-%d^%H:%M:%S", localtime(&t)); //format date and time.
         return tmpBuf; 
 }
 int ev_tcpServer::GetWs_connectID(int this_car_tcpId){
@@ -545,6 +582,63 @@ int ev_tcpServer::GetWs_connectID(int this_car_tcpId){
     }
      //cout<<"ws_id:"<<ws_id<<endl;
     
+}
+int ev_tcpServer::GetUserID(int socket_fd){
+    char sql[200];
+    int user_id;
+    sprintf(sql,"select user_id from user_info where tcp_id ='%d'",socket_fd);
+    cout<<sql<<endl;
+    if(My_db->exeSQL(sql,SELECT,My_db->result))
+    {
+        My_db->row=mysql_fetch_row(My_db->result);
+        user_id=atoi(My_db->row[0]);
+        mysql_free_result(My_db->result);
+        My_db->result=NULL;
+        My_db->row=NULL;
+        return user_id;   
+    }
+    else {
+        //mysql_free_result(My_db->result);
+        My_db->result=NULL;
+        My_db->row=NULL;
+        return RES_UNEXIST;
+    }
+     //cout<<"ws_id:"<<ws_id<<endl;  
+}
+int ev_tcpServer::init_watcher_data(struct watcher_data *w_data,int socket_fd ,int port){
+    int user_id = GetUserID(socket_fd);
+    char dir_index[100];
+    cout<<"user_id"<<user_id<<endl;
+    
+    if(RES_UNEXIST == user_id)
+    {
+        printf("user isn't exist!\n");
+        return RES_UNEXIST;
+    }
+
+    w_data->client_port = port;
+    w_data->image_id = 1;
+    w_data->user_id = user_id;
+    w_data->passage_start_time=GetTime();
+    //创建用户专属目录
+    sprintf(dir_index,"/var/www/html/web/user_info/user_%d",user_id);
+    mkdir(dir_index,0777);
+    //图片目录
+    sprintf(dir_index,"/var/www/html/web/user_info/user_%d/photo",user_id);
+    w_data->photo_dir = dir_index;
+    mkdir(dir_index,0777);
+    //视频目录
+    sprintf(dir_index,"/var/www/html/web/user_info/user_%d/video",user_id);
+    w_data->video_dir = dir_index;
+    mkdir(dir_index,0777);
+
+    //创建当前时间下的视频与图片文件夹
+    // sprintf(dir_index,"/var/www/html/web/user_info/user_%d/video/%s",user_id,w_data->passage_start_time.c_str());
+    // mkdir(dir_index,0777);
+    sprintf(dir_index,"/var/www/html/web/user_info/user_%d/photo/%s",user_id,w_data->passage_start_time.c_str());
+    mkdir(dir_index,0777);
+    //sprintf(index,"%d/image%d",user_id,)
+    //w_data->fp.open()
 }
 // string ev_tcpServer::decodejson(string json_data ,int type){ 
 //     Json::Reader reader;

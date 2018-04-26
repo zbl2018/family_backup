@@ -25,7 +25,7 @@ function init(){
 		log('WebSocket初始化状态 '+socket.readyState);
 		socket.onopen = function(msg){ 
 			log("欢迎进入控制系统 - 状态 "+this.readyState);
-			var link_res = '{"action":"link_photo","user_id":<?php echo $user_id?>}';
+			var link_res = '{"action":"link_txt","user_id":<?php echo $user_id?>}';
 			this.send(link_res);
 			};
 		socket.onmessage = function(msg){			 
@@ -44,7 +44,6 @@ function send(){
 	// txt.value="";
 	// txt.focus();
 	var jsonString = '{"action":"move","angle":"0","mode":1,"speed":"0.1"}';
-
 	// var jsObject = JSON.parse(jsonString); //转换为json对象
 
 	// alert(jsObject.bar); //取json中的值
@@ -58,6 +57,7 @@ function send(){
 	// }
 	
 }
+
 function send2(){
 	var jsonString = '{"action":"move","angle":"-90","mode":1,"speed":"0.1"}';
 	try{ socket.send(jsonString); log('您发送了: '+jsonString); } catch(ex){ log(ex); }
@@ -80,17 +80,20 @@ function onkey(event){ if(event.keyCode==13){ send(); } }
 	<button onClick="send2()">关灯</button>
 	<button onClick="quit()">断开控制台链接</button>
 	<button onClick="init()">重新连接控制台</button>
-
+	<p>
+	<a href="video.php"><button>查看往期的摄像视频</button></input></a>
+	<a href="logout.php"><button>退出登录</button></input></a>
+	</p>
 	<p>
 	<img src="" height=300 width=300 id="imgDiv"/>
-	</p>
+	</p>	
     <script type="text/javascript" charset="utf-8"> 
     var ws = new WebSocket("ws://193.112.128.66:20000");
 	//$user_id = $_SESSION['user'];
 	// alert($user_id);
     var img = document.getElementById("imgDiv");
 	ws.onopen = function(msg){ 	
-			var link_res = '{"action":"link_txt","user_id":<?php echo $user_id?>}';
+			var link_res = '{"action":"link_photo","user_id":<?php echo $user_id?>}';
 			this.send(link_res); 
 			};
     ws.onmessage = function(evt){

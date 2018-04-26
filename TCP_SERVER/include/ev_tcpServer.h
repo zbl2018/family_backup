@@ -20,17 +20,22 @@
 #define PORT_EXIST 1000
 //#define JSON_NULL "_NULL"
 #define byte unsigned char
-/*暂时默认ws_server的TCP连接id是6*/
+/*暂时默认ws_server的TCP连接id是7*/
 #define WS_TCP_CON_ID 7
-#define RES_UNEXIST 2001
+#define RES_UNEXIST 65536
 // #define RES_FAIL 2002
 // #define RES_SUCC 2003
 using namespace std;
-
 struct watcher_data{
         int client_port;
         char data_buf[200];
         bool first_flag = false;
+        int user_id;
+        ofstream fp;
+        int image_id = 1;
+        string photo_dir;
+        string video_dir;
+        string passage_start_time;
 };
 
 class ev_tcpServer{
@@ -55,10 +60,12 @@ class ev_tcpServer{
 
 
             //tool
+            static int init_watcher_data(watcher_data *w_data,int socket_fd,int port);
             static byte* intToBytes(int value,int byte_len);
             //获得当前小车对应的web端ws连接id
             static int GetWs_connectID(int this_car_tcpId);
             static int bytesToInt(byte* des, int byte_len);
+            static int GetUserID(int socket_fd);
             static string GetTime();
             
     private:
