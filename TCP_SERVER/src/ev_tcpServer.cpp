@@ -286,12 +286,14 @@ void ev_tcpServer::recv_socket_cb_net(struct ev_loop *loop,ev_io *w, int revents
                     //用户离线,不转发到web
                     return;
                 }
+                cout<<"WS_TCP_CON_ID:"<<WS_TCP_CON_ID<<endl;
                 //给出ws客户端摄像头数据显示的id          
                 memcpy(head_buf+HEAD_TYPE_LEN,intToBytes(ws_photo,HEAD_CON_LEN),HEAD_CON_LEN);
                 //先发头部
                 send(WS_TCP_CON_ID,head_buf,HEAD_ALL_LEN,MSG_NOSIGNAL);
                 //再发数据部分
                 send(WS_TCP_CON_ID,data_buf,data_len,MSG_NOSIGNAL);
+                cout<<"转发摄像头数据！\n"<<endl;
                 return ;
             }
             if(recv_type==100){
@@ -305,8 +307,6 @@ void ev_tcpServer::recv_socket_cb_net(struct ev_loop *loop,ev_io *w, int revents
                 send(WS_TCP_CON_ID,head_buf,HEAD_ALL_LEN,MSG_NOSIGNAL);
                 //再发数据部分
                 send(WS_TCP_CON_ID,data_buf,data_len,MSG_NOSIGNAL);
-
-
                 //原数据返回
                 printf("%d,recv message:\n'%s'\n",w->fd,data_buf);
                 memcpy(info,head_buf,HEAD_ALL_LEN);
@@ -339,6 +339,7 @@ void ev_tcpServer::recv_socket_cb_net(struct ev_loop *loop,ev_io *w, int revents
         break;
         // }  
     }while(1);
+    printf("remote socket closed 3\n");
     //销毁链接
     close(w->fd);
     ev_io_stop(loop,w);
@@ -634,7 +635,7 @@ int ev_tcpServer::init_watcher_data(struct watcher_data *w_data,int socket_fd ,i
     sprintf(index,"%s/%s.mp4",((watcher_data*)(w->data))->video_dir.c_str(),((watcher_data*)(w->data))->passage_start_time.c_str());
     if(-1 == access(index, F_OK)) 
     {
-        cout<<"fail to open the video file !\n"<<endl;
+        cout<<"video file isn's exist!\n"<<endl;
     }
     else{
             sprintf(sql,"insert into video_info(user_id,video_name) value('%d','%s.mp4')",
